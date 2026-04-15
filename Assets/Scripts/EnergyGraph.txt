@@ -1,0 +1,211 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class EnergyGraph : MonoBehaviour
+{
+    [Header("Control")]
+    [SerializeField] private satelliteMotionV2 satelliteScript; // <- match your class name casing
+    [SerializeField] private RectTransform GraphContainer;
+    [SerializeField] private Sprite dotSprite; // unused now, can remove from Inspector later
+
+    // Appearance
+    [SerializeField] private float lineThickness = 2f;
+    [SerializeField] private float yPadding = 10f;
+    [SerializeField] private Color colourEk = new Color(0.2f, 0.6f, 1f);
+    [SerializeField] private Color colourEp = new Color(1f, 0.4f, 0.4f);
+    [SerializeField] private Color colourEt = new Color(0.4f, 1f, 0.4f);
+
+    // Window & scaling
+    [SerializeField] private int  maxDataPoints = 300;
+    [SerializeField] private bool autoScaleY = true;
+    [SerializeField] private float fixedYMin = -50f;
+    [SerializeField] private float fixedYMax =  10f;
+
+    // Time axis and series
+    private readonly List<float> timeVals = new();
+
+    private Series seriesEk, seriesEp, seriesEt;
+
+    private struct Series
+    {
+        public readonly List<float> values;
+        public readonly List<RectTransform> lines; // only lines
+        public readonly Color colour;
+
+        public Series(Color c)
+        {
+            values = new List<float>(512);
+            lines  = new List<RectTransform>(512);
+            colour = c;
+        }
+    }
+
+    private void Awake()
+    {
+        if (!GraphContainer)
+            GraphContainer = transform.Find("GraphContainer")?.GetComponent<RectTransform>();
+
+        seriesEk = new Series(colourEk);
+        seriesEp = new Series(colourEp);
+        seriesEt = new Series(colourEt);
+    }
+
+    private void OnEnable()
+    {
+        if (satelliteScript != null)
+            satelliteScript.energyUpdated += HandleEnergy; // (Ek, Ep, t)
+    }
+
+    private void OnDisable()
+    {
+        if (satelliteScript != null)
+            satelliteScript.energyUpdated -= HandleEnergy;
+    }
+
+    private void HandleEnergy(float Ek, float Ep, float t)
+    {
+        timeVals.Add(t);
+        seriesEk.values.Add(Ek);
+        seriesEp.values.Add(Ep);
+        seriesEt.values.Add(Ek + Ep);
+
+        TrimData();
+        Redraw();
+    }
+
+    private void TrimData()
+    {
+        int n = timeVals.Count;
+        if (n <= maxDataPoints) return;
+
+        int remove = n - maxDataPoints;
+        timeVals.RemoveRange(0, remove);
+        seriesEk.values.RemoveRange(0, remove);
+        seriesEp.values.RemoveRange(0, remove);
+        seriesEt.values.RemoveRange(0, remove);
+        // Lines are reused; HideUnused handles surplus
+    }
+
+    private void Redraw()
+    {
+        if (GraphContainer == null) return;
+        int n = timeVals.Count;
+        if (n < 2) { HideUnused(seriesEk, 1); HideUnused(seriesEp, 1); HideUnused(seriesEt, 1); return; }
+
+        float width  = GraphContainer.rect.width;
+        float height = GraphContainer.rect.height;
+
+        float tMin = timeVals[0];
+        float tMax = timeVals[n - 1];
+        if (Mathf.Approximately(tMax, tMin)) tMax = tMin + 1e-3f;
+
+        float yMin, yMax;
+        if (autoScaleY)
+        {
+            yMin = float.PositiveInfinity; yMax = float.NegativeInfinity;
+            MinMaxAppend(seriesEk.values, ref yMin, ref yMax);
+            MinMaxAppend(seriesEp.values, ref yMin, ref yMax);
+            MinMaxAppend(seriesEt.values, ref yMin, ref yMax);
+            if (!float.IsFinite(yMin) || !float.IsFinite(yMax)) { yMin = 0f; yMax = 1f; }
+            if (Mathf.Approximately(yMin, yMax))
+            {
+                float pad = Mathf.Max(1e-3f, Mathf.Abs(yMax) * 0.1f);
+                yMin -= pad; yMax += pad;
+            }
+        }
+        else
+        {
+            yMin = fixedYMin; yMax = fixedYMax;
+        }
+
+        // Ensure capacity for line segments (n-1 per series)
+        EnsureUICapacity(seriesEk.lines, n - 1, CreateLine, seriesEk.colour);
+        EnsureUICapacity(seriesEp.lines, n - 1, CreateLine, seriesEp.colour);
+        EnsureUICapacity(seriesEt.lines, n - 1, CreateLine, seriesEt.colour);
+
+        // Draw all three series
+        DrawSeriesLines(timeVals, seriesEk, width, height, tMin, tMax, yMin, yMax);
+        DrawSeriesLines(timeVals, seriesEp, width, height, tMin, tMax, yMin, yMax);
+        DrawSeriesLines(timeVals, seriesEt, width, height, tMin, tMax, yMin, yMax);
+
+        // Hide surplus lines if list shrank
+        HideUnused(seriesEk, n - 1);
+        HideUnused(seriesEp, n - 1);
+        HideUnused(seriesEt, n - 1);
+    }
+
+    private void DrawSeriesLines(List<float> times, Series s, float width, float height,
+                                 float tMin, float tMax, float yMin, float yMax)
+    {
+        int n = times.Count;
+        Vector2 prev = new Vector2(
+            Mathf.Lerp(0f, width, Mathf.InverseLerp(tMin, tMax, times[0])),
+            Mathf.Lerp(yPadding, height - yPadding, Mathf.InverseLerp(yMin, yMax, s.values[0]))
+        );
+
+        for (int i = 1; i < n; i++)
+        {
+            float x = Mathf.Lerp(0f, width, Mathf.InverseLerp(tMin, tMax, times[i]));
+            float y = Mathf.Lerp(yPadding, height - yPadding, Mathf.InverseLerp(yMin, yMax, s.values[i]));
+            Vector2 cur = new Vector2(x, y);
+
+            var line = s.lines[i - 1];
+            line.gameObject.SetActive(true);
+            SetLineSegment(line, prev, cur);
+
+            prev = cur;
+        }
+    }
+
+    private void HideUnused(Series s, int neededLines)
+    {
+        for (int i = neededLines; i < s.lines.Count; i++)
+            if (s.lines[i]) s.lines[i].gameObject.SetActive(false);
+    }
+
+    private void MinMaxAppend(List<float> vals, ref float min, ref float max)
+    {
+        for (int i = 0; i < vals.Count; i++)
+        {
+            float v = vals[i];
+            if (v < min) min = v;
+            if (v > max) max = v;
+        }
+    }
+
+    private RectTransform CreateLine()
+    {
+        var go = new GameObject("line", typeof(Image));
+        go.transform.SetParent(GraphContainer, false);
+        var img = go.GetComponent<Image>();
+        img.raycastTarget = false; // UI cleanliness
+        img.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0,0,2,2), new Vector2(0.5f,0.5f), 100f);
+
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.zero;
+        rt.pivot = new Vector2(0f, 0.5f);
+        return rt;
+    }
+
+    private void SetLineSegment(RectTransform line, Vector2 a, Vector2 b)
+    {
+        Vector2 d = b - a;
+        float len = d.magnitude;
+        line.sizeDelta = new Vector2(len, lineThickness);
+        line.anchoredPosition = a;
+        line.localEulerAngles = new Vector3(0, 0, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
+    }
+
+    private void EnsureUICapacity(List<RectTransform> list, int needed, System.Func<RectTransform> factory, Color tint)
+    {
+        while (list.Count < needed)
+        {
+            var rt = factory();
+            var img = rt.GetComponent<Image>();
+            if (img) img.color = tint;
+            list.Add(rt);
+        }
+    }
+}
