@@ -157,3 +157,5 @@ MonoBehaviour:
   name: 
   tleLine1: 
   tleLine2: 
+  mass: 0
+  radius: 0

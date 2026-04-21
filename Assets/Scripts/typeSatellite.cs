@@ -9,7 +9,7 @@ public class typeSatellite : MonoBehaviour
     public string tleLine2;
     public float mass;
     public float radius;
-
+    public float[,] CovMatrix = new float[6,6];
     public Satellite sgp4Satellite;
     public void IntialiseOrbit(string satName, string line1, string line2)
     {

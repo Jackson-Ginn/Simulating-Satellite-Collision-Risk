@@ -37,7 +37,7 @@ def tleCovariance(dataFile1, dataFile2, dataFile3):
 
         for i in range(0, len(TLEdata), 3):
             try:
-                name = TLEdata[i].rstrip('\n')
+                name = TLEdata[i].strip()
                 line1 = TLEdata[i+1].rstrip('\n')
                 line2 = TLEdata[i+2].rstrip('\n')
 
@@ -164,12 +164,12 @@ def tleCovariance(dataFile1, dataFile2, dataFile3):
 
     header = [
         "satellite_name", "norad_id",
-        "C_rR_rR", "C_rR_rS", "C_rR_rW", "C_rR_vR", "C_rR_vS", "C_rR_vW",
-        "C_rS_rR", "C_rS_rS", "C_rS_rW", "C_rS_vR", "C_rS_vS", "C_rS_vW",
-        "C_rW_rR", "C_rW_rS", "C_rW_rW", "C_rW_vR", "C_rW_vS", "C_rW_vW",
-        "C_vR_rR", "C_vR_rS", "C_vR_rW", "C_vR_vR", "C_vR_vS", "C_vR_vW",
-        "C_vS_rR", "C_vS_rS", "C_vS_rW", "C_vS_vR", "C_vS_vS", "C_vS_vW",
-        "C_vW_rR", "C_vW_rS", "C_vW_rW", "C_vW_vR", "C_vW_vS", "C_vW_vW"
+        "C_pR_pR", "C_pR_pI", "C_pR_pC", "C_pR_vR", "C_pR_vI", "C_pR_vC",
+        "C_pI_pR", "C_pI_pI", "C_pI_pC", "C_pI_vR", "C_pI_vI", "C_pI_vC",
+        "C_pC_pR", "C_pC_pI", "C_pC_pC", "C_pC_vR", "C_rC_vI", "C_pC_vC",
+        "C_vR_pR", "C_vR_pI", "C_vR_pC", "C_vR_vR", "C_vR_vI", "C_vR_vC",
+        "C_vI_pR", "C_vI_pI", "C_vI_pC", "C_vI_vR", "C_vI_vI", "C_vI_vC",
+        "C_vC_pR", "C_vC_pI", "C_vC_pC", "C_vC_vR", "C_vC_vI", "C_vC_vC"
     ]
 
     for i in range(len(commonIDs)):
@@ -195,6 +195,6 @@ def tleCovariance(dataFile1, dataFile2, dataFile3):
 
     # Store covariance data
     print("Phase 5:")
-    storeCSV("TLE_Covariance_RSW", rows, header)
+    storeCSV("TLE_Covariance_RIC", rows, header)
     tf = time.monotonic()
     print(f"Phase 5 complete {tf-t4:.2f} seconds later.")

@@ -102,8 +102,44 @@ public class satelliteManagerV2 : MonoBehaviour
         float radius = (float)Math.Pow((3f * mass) / (4f * (float)Math.PI * satDensity), 1f / 3f);
         return radius;
     }
-    public void Register(satelliteMotionV5 sat)
+    public void Register(typeSatellite sat)
     {
         sats.Add(sat);
+    }
+
+    public string[][] ReadCSV(string SatCovData)
+    {
+        string[] lines = SatCovData.Split("\n");
+
+        List<string[]> CovArray = new List<string[]>();
+
+        foreach (string line in lines)
+        {
+            string[] row = line.Split(",");
+            CovArray.Add(row);
+        }
+
+        return CovArray.ToArray();
+    }
+    
+    public void AssignSatCov(string[] names, string[][] CovData)
+    {
+        // Get position of each satellite in the CSV covariance data file
+        foreach (typeSatellite sat in sats)
+        {
+            int index = Array.IndexOf(names, sat.name);
+
+            if (index<0) continue; // Skip if sat not found
+
+            // Therefore, assign covariance values to sat
+            for (int i = 0; i < 6; i++)
+            {
+                for (int j = 0; j < 6; j++)
+                {
+                    int flatIndex = 2 + (i * 6 + j);
+                    float.TryParse(CovData[index][flatIndex], out sat.CovMatrix[i, j]);                }
+            }
+            Debug.Log(sat.name);
+        }
     }
 }

@@ -9,14 +9,21 @@ public class satelliteSpawner : MonoBehaviour
     [SerializeField] private GameObject satellitePrefab;
     [SerializeField] private satelliteManagerV2 manager;
     [SerializeField] private TextAsset MassData;
+    [SerializeField] private TextAsset SatCovData;
+    
+    private string[][] CovData;
+    string[] CovNames;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Awake()
     {
         LoadSatsFromTLE(TLEData.text);
+        CovData = manager.ReadCSV(SatCovData.text);
     }
     void Start()
     {
         manager.AssignSatRadii(MassData.text);
+        CovNames = GetNames(CovData);
+        manager.AssignSatCov(CovNames, CovData);
     }
 
     private void LoadSatsFromTLE(string tleData)
@@ -52,5 +59,16 @@ public class satelliteSpawner : MonoBehaviour
                 Destroy(satellite);
             }
         }
+    }
+    private string[] GetNames(string[][] CovData)
+    {
+        int height = CovData.Length;
+        string[] names = new string[height];
+
+        for (int i=1; i<height; i++)
+        {
+            names[i] = CovData[i][0];
+        }
+        return names;
     }
 }

@@ -398,7 +398,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   zoomSensitivity: 30
-  panSensitivity: 10
+  panSensitivity: 5
   minOrbitRadius: 150
   maxOrbitRadius: 1000
   minPitch: -80
@@ -709,6 +709,7 @@ MonoBehaviour:
   satellitePrefab: {fileID: 4477851495285696192, guid: f5d0b4ee127a57e498334ff52d7444c9, type: 3}
   manager: {fileID: 1201488284}
   MassData: {fileID: 4900000, guid: 4294923dc55f69c478e25bd6df736264, type: 3}
+  SatCovData: {fileID: 4900000, guid: d70a6a7c0d86d6e44a9bf3623203955f, type: 3}
 --- !u!1 &1588579138
 GameObject:
   m_ObjectHideFlags: 0
