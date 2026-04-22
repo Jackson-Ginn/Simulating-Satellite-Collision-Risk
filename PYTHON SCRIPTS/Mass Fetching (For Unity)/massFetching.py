@@ -6,7 +6,7 @@ import numpy as np
 
 tle_file = "TLE Satellite Data 2026-04-02.txt"
 output_file = "satellite_masses.txt"
-batch_size = 100
+batch_size = 1
 
 def extractSatData(item):
     attributes = item.get("attributes", {})
@@ -23,13 +23,15 @@ def extractSatData(item):
 
 def getResponse(batch_size):
     response = requests.get(
-        f"{URL}/api/objects",
+        f"{URL}/api/reentries",
         headers=headers,
         params={
             "page[size]": batch_size,
             "page[number]": page
         },
     )
+    print(response.json())
+    input("")
     return response
 
 def extractRawData(response):
@@ -106,7 +108,7 @@ page = 1;total_data=0
 DISCOSsatnoANDmass= []
 while True:
     # Request up to 100 satellites at once and give API 0.1s break
-    time.sleep(0.1)
+    #time.sleep(0.1)
     response = getResponse(batch_size)
 
     if checkResponse(response):

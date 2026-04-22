@@ -11,6 +11,7 @@ public class typeSatellite : MonoBehaviour
     public float radius;
     public float[,] CovMatrix = new float[6,6];
     public Satellite sgp4Satellite;
+    //private readonly List<typeSatellite> collisionSats = new List<typeSatellite>();
     public void IntialiseOrbit(string satName, string line1, string line2)
     {
         name = satName;

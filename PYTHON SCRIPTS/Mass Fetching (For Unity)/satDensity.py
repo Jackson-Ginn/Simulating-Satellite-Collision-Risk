@@ -3,24 +3,50 @@ import time
 import os
 from get_token import get_token
 import numpy as np
+import csv
+import math
 fileName = "satDensity"
 
-
 def extractSatData(item):
-    attributes = item.get("attributes", {})
-    mass = attributes.get("mass")
-    span = attributes.get("span")
+    dimensions = []
 
-    return mass, span
+    attributes = item.get("attributes", {})
+
+    mass = attributes.get("mass")
+    shape =attributes.get("shape")
+
+    if shape == "Sphere":
+        span = attributes.get("span")
+        dimensions.append(span)
+    elif shape == "Cyl":
+        span = attributes.get("span")
+        height = attributes.get("height")
+        dimensions.append(span); dimensions.append(height)
+    elif shape == "Box": 
+        height = attributes.get("height")
+        width = attributes.get("width")
+        depth = attributes.get("depth")
+        dimensions.append(height); dimensions.append(width); dimensions.append(depth)
+    
+
+    return shape, mass, dimensions
 
 def checkDataStatus(item):   
     attributes = item.get("attributes", {})
     mass = attributes.get("mass")
     shape = attributes.get("shape")
     span = attributes.get("span")
-    
-    if mass != None and shape == "Sphere" and span != None:
-        return True
+    height = attributes.get("height")
+    width = attributes.get("width")
+    depth = attributes.get("depth")
+
+    if mass != None:
+        if shape == "Sphere" and span != None:
+            return True
+        elif shape == "Box" and height != None and width != None and depth != None:
+            return True
+        elif shape == "Cyl" and height != None and span != None:
+            return True
     return False
 
 def getResponse(batch_size):
@@ -65,8 +91,12 @@ def checkTotalDataAmount(n,s,total_data):
         print("Total objects processed so far", total_data, "but gathered", n, "and skipped", s)
         input("Halt")
 
-def storeData(mass, radius):
-    raw_data.append([mass, radius])
+def storeData(shape, mass, dimensions):
+    toAdd = []
+    toAdd.append(shape); toAdd.append(mass)
+    for item in dimensions:
+        toAdd.append(item)
+    raw_data.append(toAdd)
 
 
 URL = "https://discosweb.esoc.esa.int"
@@ -121,8 +151,8 @@ while True:
 
         for item in data:
             if checkDataStatus(item):
-                mass, span = extractSatData(item)
-                storeData(mass, span)
+                shape, mass, dimensions = extractSatData(item)
+                storeData(shape, mass, dimensions)
                 n+=1
             else:
                 s+=1
@@ -136,18 +166,38 @@ while True:
 print(raw_data)
 input("Halt")
 
-writeDataToFile(raw_data,"rawMassAndRadiusData","Satellite Mass, Satellite Radius")
+writeDataToFile(raw_data,"rawMassAndDimensionData","Shape, Mass, Dimensions")
 
-# Get average density from raw data
+# Calc density
 totalDensity=0
 densityArray=[]
-for i in range(len(raw_data)-1):
-    mass_i = float(raw_data[i+1][0])
-    radius_i = float(raw_data[i+1][1])/2
-    density_i = (3*mass_i)/(4*np.pi*radius_i**3)
-    densityArray.append(density_i)
+with open("rawMassAndDimensionData.csv", newline="") as f:
+    lines = csv.reader(f)
 
+    for line in lines:
+        if line[0].strip() == "Shape":
+            continue
+        shape = line[0]
+        mass = float(line[1])
+        dimensions = line[2:]
+
+        if shape == "Sphere":
+            r = float(dimensions[0])/2
+            volume = 4/3 * math.pi * r**3
+        if shape == "Cyl":
+            r = float(dimensions[0])/2
+            h = float(dimensions[1])
+            volume = math.pi *r**2 * h
+        if shape == "Box":
+            h = float(dimensions[0])
+            w = float(dimensions[1])
+            d = float(dimensions[2])
+            volume = h * w * d
+
+        density = mass/volume
+        densityArray.append(density)
 
 print(densityArray)
-#avgDensity = densityArray.
-#writeDataToFile(avgDensity,fileName,"Average Density")
+avgDensity = sum(densityArray)/len(densityArray)
+print("AVG DENSITY: ",avgDensity)
+writeDataToFile(avgDensity,fileName,"Average Density")

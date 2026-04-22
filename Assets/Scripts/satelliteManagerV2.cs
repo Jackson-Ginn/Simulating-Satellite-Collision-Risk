@@ -5,10 +5,11 @@ using System;
 public class satelliteManagerV2 : MonoBehaviour
 {
     private readonly List<typeSatellite> sats = new List<typeSatellite>();
+    public List<typeSatellite> Satellites => sats;
     public inputHandling inputHandler;
     private float dt;
     private DateTime currentTime;
-    private float satDensity = 858.1138838346274f;
+    private float satDensity = 470.1002078863646f;
     float scale = simulationConstants.scaleFactor;
     void Start()
     {
@@ -121,7 +122,6 @@ public class satelliteManagerV2 : MonoBehaviour
 
         return CovArray.ToArray();
     }
-    
     public void AssignSatCov(string[] names, string[][] CovData)
     {
         // Get position of each satellite in the CSV covariance data file

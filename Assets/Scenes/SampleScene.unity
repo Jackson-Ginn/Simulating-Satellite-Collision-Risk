@@ -205,13 +205,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: 0.030025002, y: -0.92103153, z: 0.07248677, w: 0.38150373}
+  m_LocalPosition: {x: 200, y: 50, z: 200}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 821567847}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 9, y: -135, z: 0}
 --- !u!114 &330585547
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -360,9 +360,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 821567847}
-  - component: {fileID: 821567848}
   m_Layer: 0
-  m_Name: CameraRig
+  m_Name: OrbitCameraRig
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -377,7 +376,7 @@ Transform:
   m_GameObject: {fileID: 821567846}
   serializedVersion: 2
   m_LocalRotation: {x: 0.08052145, y: 0.3812272, z: -0.033353075, w: 0.9203639}
-  m_LocalPosition: {x: 200, y: 50, z: 200}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -385,24 +384,6 @@ Transform:
   - {fileID: 2072869577}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 10, y: 45, z: 0}
---- !u!114 &821567848
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 821567846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6dedf9f580e9ab244bfb6da9c2378378, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  zoomSensitivity: 30
-  panSensitivity: 5
-  minOrbitRadius: 150
-  maxOrbitRadius: 1000
-  minPitch: -80
-  maxPitch: 80
 --- !u!1 &1201488283
 GameObject:
   m_ObjectHideFlags: 0
@@ -540,6 +521,60 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d39988b415ad1b5429679d4556a3c78e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &1462727230
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1462727232}
+  - component: {fileID: 1462727231}
+  m_Layer: 0
+  m_Name: CameraManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1462727231
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1462727230}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6dedf9f580e9ab244bfb6da9c2378378, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  satManager: {fileID: 1201488284}
+  targetCamera: {fileID: 330585545}
+  zoomSensitivity: 30
+  panSensitivity: 10
+  minOrbitRadius: 150
+  maxOrbitRadius: 1000
+  minPitch: -80
+  maxPitch: 80
+  localOffset: {x: 0, y: 2, z: -6}
+  keepUpdatingWhileAttached: 1
+--- !u!4 &1462727232
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1462727230}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 596.0644, y: 305.2341, z: 160.81479}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1490024222
 GameObject:
   m_ObjectHideFlags: 0
@@ -1299,11 +1334,12 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 1490024225}
-  - {fileID: 1868896445}
   - {fileID: 1739435902}
+  - {fileID: 1868896445}
   - {fileID: 643413604}
-  - {fileID: 821567847}
-  - {fileID: 1588579141}
-  - {fileID: 1510529659}
   - {fileID: 1201488285}
+  - {fileID: 1510529659}
+  - {fileID: 1462727232}
+  - {fileID: 821567847}
   - {fileID: 811242598}
+  - {fileID: 1588579141}
