@@ -1,30 +1,29 @@
-data = readmatrix('dataRearranged.csv');
+data = readmatrix('orbit_counts_by_year.csv');
 
 year = data(:,1);
 values = data(:,2:10);
 
-% Make cumulative down the rows
-values = cumsum(values, 1);
+object_classes = [
+    "Payload"
+    "Payload Mission Related Object"
+    "Payload Fragmentation Debris"
+    "Payload Debris"
+    "Rocket Body"
+    "Rocket Mission Related Object"
+    "Rocket Fragmentation Debris"
+    "Rocket Debris"
+    "Unknown"
+];
 
-% Plot
 figure;
-b=bar(year, values, 'stacked');
+b = bar(year, values, 'stacked');
 
-xlabel('Year');
-ylabel('Cumulative Counts');
-title('Cumulative Stacked Bar Chart');
-
-object_classes = ["Rocket Body","Rocket Mission Related Object","Rocket Fragmentation Debris","Rocket Debris","Payload","Payload Mission Related Object","Payload Fragmentation Debris","Payload Debris","Unknown"];
-object_classes_alt = ["Payload","Payload Mission Related Object","Payload Fragmentation Debris","Payload Debris","Rocket Body","Rocket Mission Related Object","Rocket Fragmentation Debris","Rocket Debris","Unknown"];
-legend(object_classes, 'Location','eastoutside');
-grid on;
-
-set(gcf, "Theme", "light");
- 
-legend(object_classes_alt, "Location", "none", "Position", [0.1758 0.6340 0.1714, 0.2528])
-title("Evolution of Earth""s Space Environment")
+title("Evolution of Earth's Space Environment")
 xlabel("Epoch Year")
 ylabel("Object Count")
+
+legend(object_classes, "Location", "eastoutside");
+grid on;
 
 % Define colors
 blue_shades = [
@@ -43,13 +42,15 @@ red_shades = [
 
 gray_color = [0.5 0.5 0.5];
 
-% Apply colors
+% Payload classes = blue
 for i = 1:4
     b(i).FaceColor = blue_shades(i,:);
 end
 
+% Rocket classes = red
 for i = 5:8
     b(i).FaceColor = red_shades(i-4,:);
 end
 
+% Unknown = gray
 b(9).FaceColor = gray_color;
