@@ -413,6 +413,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c52d5f2617ed2441ab82ddb60c81d3e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  minCollisionRadiusKm: 6500
+  maxCollisionRadiusKm: 30000
   inputHandler: {fileID: 643413603}
 --- !u!4 &1201488285
 Transform:
@@ -465,7 +467,7 @@ RectTransform:
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 200, y: 30}
+  m_SizeDelta: {x: 200, y: 60}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &1356351256
 MonoBehaviour:
@@ -500,7 +502,9 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: New Text
+  m_Text: 'Sim Time
+
+    POV: Sat Name'
 --- !u!222 &1356351257
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -521,6 +525,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d39988b415ad1b5429679d4556a3c78e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  cameraController: {fileID: 1462727231}
 --- !u!1 &1462727230
 GameObject:
   m_ObjectHideFlags: 0
@@ -558,8 +563,6 @@ MonoBehaviour:
   maxOrbitRadius: 1000
   minPitch: -80
   maxPitch: 80
-  localOffset: {x: 0, y: 2, z: -6}
-  keepUpdatingWhileAttached: 1
 --- !u!4 &1462727232
 Transform:
   m_ObjectHideFlags: 0
@@ -1226,6 +1229,55 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1977752847}
   m_CullTransparentMesh: 1
+--- !u!1 &2026971257
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2026971259}
+  - component: {fileID: 2026971258}
+  m_Layer: 0
+  m_Name: CollisionManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2026971258
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2026971257}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 761d077045481204098c200f8fc4dee9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  exportCandidatePairs: 1
+  satManager: {fileID: 1201488284}
+  screeningIntervalSeconds: 1
+  screeningDistanceKm: 20
+  gridSizeKm: 50
+--- !u!4 &2026971259
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2026971257}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 596.0644, y: 305.2341, z: 160.81479}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2072869576
 GameObject:
   m_ObjectHideFlags: 0
@@ -1343,3 +1395,4 @@ SceneRoots:
   - {fileID: 821567847}
   - {fileID: 811242598}
   - {fileID: 1588579141}
+  - {fileID: 2026971259}

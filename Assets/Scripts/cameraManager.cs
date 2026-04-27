@@ -28,11 +28,30 @@ public class orbitCamera : MonoBehaviour
     private bool satListFetched = false;
     private bool justCycled = false;
     Quaternion pointCamera;
+
+    public bool IsAttachedToSatellite => !orbit;
+
+    public string CurrentSatelliteName
+    {
+        get
+        {
+            if (!satListFetched || sats == null || sats.Count == 0)
+                return "";
+
+            return sats[satIndex].name;
+        }
+    }
+
+    
     private void Awake()
     {
         orbitRadius = targetCamera.transform.position.magnitude;
     }
 
+
+// Stored angles for the camera
+float headingAngle, pitchAngle;
+Quaternion initalCameraRotation;
     private void LateUpdate()
     {
         // Orbit Camera Control
@@ -79,11 +98,16 @@ public class orbitCamera : MonoBehaviour
             typeSatellite sat = sats[satIndex];
 
             Vector3 satPosition = sat.transform.position;
+
+            pointCamera = Quaternion.LookRotation(sat.velocity, Vector3.Normalize(satPosition));
+            initalCameraRotation = pointCamera;
+
             // Set inital camera point to velocity vector direction
             if (justCycled)
             {
-                pointCamera = Quaternion.LookRotation(sat.velocity, Vector3.up);
                 justCycled = false;
+                pitchAngle = 0;
+                headingAngle = 0;
             }
             // Allow user to pan camera around satellite
             else
@@ -91,15 +115,18 @@ public class orbitCamera : MonoBehaviour
                 if (Input.GetMouseButton(0))
                 {
                     float mouseX = Input.GetAxis("Mouse X");
+                    float mouseY = Input.GetAxis("Mouse Y");
 
-                    Vector3 rotationAxis = Vector3.Cross(satPosition, sat.velocity).normalized;
-                    
-                    Quaternion align = Quaternion.FromToRotation(transform.up, rotationAxis);
-                    targetCamera.transform.rotation = align * transform.rotation;   
+                    Vector3 yawAxis = Vector3.Normalize(satPosition);
+                    Vector3 pitchAxis = Vector3.Normalize(Vector3.Cross(sat.velocity, satPosition));
 
-                    float angle = mouseX * panSensitivity;
+                    //Quaternion align = Quaternion.FromToRotation(transform.up, rotationAxis);
+                    //targetCamera.transform.rotation = align * transform.rotation;   
 
-                    pointCamera = Quaternion.AngleAxis(angle, rotationAxis) * pointCamera;
+                    headingAngle += mouseX * panSensitivity;
+                     pitchAngle += mouseY * panSensitivity;
+
+                    pointCamera = Quaternion.AngleAxis(headingAngle, yawAxis) * Quaternion.AngleAxis(pitchAngle, pitchAxis) * initalCameraRotation;
                     
                 }
             }

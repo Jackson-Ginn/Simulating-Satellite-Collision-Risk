@@ -4,16 +4,32 @@ using Zeptomoby.OrbitTools;
 using System;
 public class satelliteManagerV2 : MonoBehaviour
 {
+    [SerializeField] private float minCollisionRadiusKm = 6500f;
+    [SerializeField] private float maxCollisionRadiusKm = 30000f;
+
+    private readonly List<typeSatellite> collisionSats = new List<typeSatellite>();
+    public List<typeSatellite> CollisionSatellites => collisionSats;
+
+
     private readonly List<typeSatellite> sats = new List<typeSatellite>();
     public List<typeSatellite> Satellites => sats;
+
     public inputHandling inputHandler;
     private float dt;
     private DateTime currentTime;
+    public DateTime CurrentTime => currentTime;
     private float satDensity = 470.1002078863646f;
     float scale = simulationConstants.scaleFactor;
     void Start()
     {
         currentTime = DateTime.UtcNow;
+    }
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            ToggleCovarianceShapes();   
+        }
     }
     // 50Hz update rate
     void FixedUpdate()
@@ -27,27 +43,32 @@ public class satelliteManagerV2 : MonoBehaviour
 
             if (sat == null || sat.sgp4Satellite == null) {Debug.LogWarning(sat.name); continue;}
            
-            try{
-            Eci eci = sat.sgp4Satellite.PositionEci(currentTime);
-            Vector3 position = new Vector3(
-                    (float)eci.Position.Y,
-                    (float)eci.Position.Z,
-                    (float)eci.Position.X
-                ) * scale;
+            try
+            {
+                Eci eci = sat.sgp4Satellite.PositionEci(currentTime);
+                Vector3 positionKm = new Vector3(
+                        (float)eci.Position.Y,
+                        (float)eci.Position.Z,
+                        (float)eci.Position.X
+                    );
 
-            sat.transform.position = position;
+                Vector3 velocityKmS  = new Vector3(
+                        (float)eci.Velocity.Y,
+                        (float)eci.Velocity.Z,
+                        (float)eci.Velocity.X
+                    );
 
-            Vector3 velocity  = new Vector3(
-                    (float)eci.Velocity.Y,
-                    (float)eci.Velocity.Z,
-                    (float)eci.Velocity.X
-                ) * scale;
+                sat.posKm = positionKm;
+                sat.velKmS = velocityKmS;
 
-            sat.velocity = velocity;
+                sat.transform.position = positionKm * scale;
+                sat.velocity = velocityKmS * scale;
             }
-            catch{
-                Debug.LogWarning("Prop failed for {sat.name}");
-                Destroy(sat);
+            catch
+            {
+                Debug.LogWarning($"Prop failed for {sat.name}");
+                Destroy(sat.gameObject);
+                collisionSats.Remove(sat);
                 sats.RemoveAt(i);
                 i--;
             }
@@ -106,6 +127,11 @@ public class satelliteManagerV2 : MonoBehaviour
     public void Register(typeSatellite sat)
     {
         sats.Add(sat);
+
+        if (IsInCollisionRegion(sat))
+        {
+            collisionSats.Add(sat);
+        }
     }
 
     public string[][] ReadCSV(string SatCovData)
@@ -139,7 +165,44 @@ public class satelliteManagerV2 : MonoBehaviour
                     int flatIndex = 2 + (i * 6 + j);
                     float.TryParse(CovData[index][flatIndex], out sat.CovMatrix[i, j]);                }
             }
-            Debug.Log(sat.name);
+            //Debug.Log(sat.name);
+        }
+    }
+    private bool IsInCollisionRegion(typeSatellite sat)
+    {
+        if (sat == null || sat.sgp4Satellite == null)
+            return false;
+
+        try
+        {
+            Eci eci = sat.sgp4Satellite.PositionEci(DateTime.UtcNow);
+
+            Vector3 posKm = new Vector3(
+                (float)eci.Position.Y,
+                (float)eci.Position.Z,
+                (float)eci.Position.X
+            );
+
+            float orbitalRadiusKm = posKm.magnitude;
+
+            return orbitalRadiusKm >= minCollisionRadiusKm &&
+            orbitalRadiusKm <= maxCollisionRadiusKm;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private bool showCovarianceShapes = false;
+
+    public void ToggleCovarianceShapes()
+    {
+        showCovarianceShapes = !showCovarianceShapes;
+
+        foreach (typeSatellite sat in sats)
+        {
+            sat.showCovarianceShape = showCovarianceShapes;
         }
     }
 }
