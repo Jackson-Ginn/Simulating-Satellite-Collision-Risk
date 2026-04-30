@@ -1,52 +1,42 @@
-### This estimates a per-satellite covariance matrix in the RSW reference frame
-### from three filtered 3-line TLE files. For each satellite, all three TLEs are
-### propagated to the epoch of the middle file, transformed into the RSW frame,
-### and a 6x6 sample covariance matrix is formed from the three [dR,dS,dW,dVR,dVS,dVW]
-### samples. The results are saved as a CSV file.
 import time
 import csv
 import numpy as np
 from sgp4.api import Satrec
 
-def tleCovariance(dataFile1, dataFile2, dataFile3):
-    def getIntID(TLEdata):
-        IDs = []
-        for i in range(len(TLEdata)):
-            line = TLEdata[i]
-            if line[0] != '1': continue
-            else:
-                IDs.append(line[9:16].strip())
-        return IDs
-
+def tleCovariance(*dataFiles):
     def getData(txtFile):
-        raw_data = []
-        with open(txtFile, 'r') as f:
-            for row in f:
-                raw_data.append(row)
-        return raw_data
+        with open(txtFile, "r") as f:
+            return f.readlines()
 
     def storeCSV(fileName, rows, header):
-        with open(str(fileName) + ".csv", 'w', newline='') as f:
+        with open(fileName + ".csv", "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(header)
-            for i in range(len(rows)):
-                writer.writerow(rows[i])
+            writer.writerows(rows)
 
-    def tleTriplesToDict(TLEdata):
+    def tleTriplesToDict(TLEdata, minMeanMotion=0.9):
         tleDict = {}
 
         for i in range(0, len(TLEdata), 3):
             try:
                 name = TLEdata[i].strip()
-                line1 = TLEdata[i+1].rstrip('\n')
-                line2 = TLEdata[i+2].rstrip('\n')
+                line1 = TLEdata[i + 1].rstrip("\n")
+                line2 = TLEdata[i + 2].rstrip("\n")
 
-                if line1[0] != '1' or line2[0] != '2':
+                if line1[0] != "1" or line2[0] != "2":
+                    continue
+
+                meanMotion = float(line2[52:63])
+
+                # Remove objects beyond/near GEO
+                # GEO mean motion is about 1 rev/day, so 0.9 adds padding.
+                if meanMotion < minMeanMotion:
                     continue
 
                 satID = line1[9:16].strip()
                 tleDict[satID] = [name, line1, line2]
-            except IndexError:
+
+            except (IndexError, ValueError):
                 pass
 
         return tleDict
@@ -78,85 +68,89 @@ def tleCovariance(dataFile1, dataFile2, dataFile3):
         What = h / hmag
         Shat = np.cross(What, Rhat)
 
-        # Rows are the basis vectors of the RSW frame
-        T = np.array([Rhat, Shat, What], dtype=float)
-        return T
+        return np.array([Rhat, Shat, What], dtype=float)
 
     def inertialToRSW(T, vec):
         return T @ vec
 
-    def covarianceFrom3TLEs(tle1, tle2, tle3):
-        sat1 = makeSatrec(tle1)
-        sat2 = makeSatrec(tle2)
-        sat3 = makeSatrec(tle3)
+    def covarianceFromTLEs(tleList, referenceIndex):
+        sats = [makeSatrec(tle) for tle in tleList]
 
-        # Use epoch of middle file as common comparison epoch
-        jd2, fr2 = getEpochJD(sat2)
+        # Use epoch of the last file as common comparison epoch
+        jdRef, frRef = getEpochJD(sats[referenceIndex])
 
-        r1, v1 = propagateSat(sat1, jd2, fr2)
-        r2, v2 = propagateSat(sat2, jd2, fr2)
-        r3, v3 = propagateSat(sat3, jd2, fr2)
+        positions = []
+        velocities = []
 
-        if r1 is None or r2 is None or r3 is None:
-            return None
+        for sat in sats:
+            r, v = propagateSat(sat, jdRef, frRef)
+            if r is None or v is None:
+                return None
 
-        # Simple reference state from mean of the propagated states
-        # (practical 3-file approximation)
-        rRef = (r1 + r2 + r3) / 3.0
-        vRef = (v1 + v2 + v3) / 3.0
+            positions.append(r)
+            velocities.append(v)
+
+        positions = np.array(positions, dtype=float)
+        velocities = np.array(velocities, dtype=float)
+
+        # Mean reference state
+        rRef = np.mean(positions, axis=0)
+        vRef = np.mean(velocities, axis=0)
 
         T = getRSWframe(rRef, vRef)
         if T is None:
             return None
 
-        dr1 = inertialToRSW(T, r1 - rRef)
-        dv1 = inertialToRSW(T, v1 - vRef)
+        samples = []
 
-        dr2 = inertialToRSW(T, r2 - rRef)
-        dv2 = inertialToRSW(T, v2 - vRef)
+        for i in range(len(tleList)):
+            dr = inertialToRSW(T, positions[i] - rRef)
+            dv = inertialToRSW(T, velocities[i] - vRef)
 
-        dr3 = inertialToRSW(T, r3 - rRef)
-        dv3 = inertialToRSW(T, v3 - vRef)
+            samples.append([
+                dr[0], dr[1], dr[2],
+                dv[0], dv[1], dv[2]
+            ])
 
-        samples = np.array([
-            [dr1[0], dr1[1], dr1[2], dv1[0], dv1[1], dv1[2]],
-            [dr2[0], dr2[1], dr2[2], dv2[0], dv2[1], dv2[2]],
-            [dr3[0], dr3[1], dr3[2], dv3[0], dv3[1], dv3[2]]
-        ], dtype=float)
+        samples = np.array(samples, dtype=float)
 
-        # Need at least 2 samples; here we have 3
+        if len(samples) < 2:
+            return None
+
         cov = np.cov(samples, rowvar=False, ddof=1)
 
         return cov
 
     ### Main ###
 
-    # Get text file data into array
+    if len(dataFiles) < 2:
+        raise ValueError("Please provide at least two TLE data files.")
+
+    referenceIndex = len(dataFiles) - 1
+
+    # Get text file data into arrays
     t0 = time.monotonic()
     print("Phase 1:")
-    TLEarray1 = getData(dataFile1)
-    TLEarray2 = getData(dataFile2)
-    TLEarray3 = getData(dataFile3)
+    TLEarrays = [getData(dataFile) for dataFile in dataFiles]
     t1 = time.monotonic()
-    print(f"Phase 1 complete {t1-t0:.2f} seconds later.")
+    print(f"Phase 1 complete {t1 - t0:.2f} seconds later.")
 
     # Convert files into dictionaries keyed by NORAD ID
     print("Phase 2:")
-    tleDict1 = tleTriplesToDict(TLEarray1)
-    tleDict2 = tleTriplesToDict(TLEarray2)
-    tleDict3 = tleTriplesToDict(TLEarray3)
+    tleDicts = [tleTriplesToDict(TLEarray) for TLEarray in TLEarrays]
     t2 = time.monotonic()
-    print(f"Phase 2 complete {t2-t1:.2f} seconds later.")
+    print(f"Phase 2 complete {t2 - t1:.2f} seconds later.")
 
-    # Find satellites present in all three files
+    # Find satellites present in every file
     print("Phase 3:")
-    IDs1 = set(tleDict1.keys())
-    IDs2 = set(tleDict2.keys())
-    IDs3 = set(tleDict3.keys())
+    commonIDs = set(tleDicts[0].keys())
 
-    commonIDs = sorted(list(IDs1 & IDs2 & IDs3))
+    for tleDict in tleDicts[1:]:
+        commonIDs = commonIDs.intersection(set(tleDict.keys()))
+
+    commonIDs = sorted(list(commonIDs))
     t3 = time.monotonic()
-    print(f"Phase 3 complete {t3-t2:.2f} seconds later.")
+    print(f"Phase 3 complete {t3 - t2:.2f} seconds later.")
 
     # Compute covariance matrix for each satellite
     print("Phase 4:")
@@ -166,24 +160,23 @@ def tleCovariance(dataFile1, dataFile2, dataFile3):
         "satellite_name", "norad_id",
         "C_pR_pR", "C_pR_pI", "C_pR_pC", "C_pR_vR", "C_pR_vI", "C_pR_vC",
         "C_pI_pR", "C_pI_pI", "C_pI_pC", "C_pI_vR", "C_pI_vI", "C_pI_vC",
-        "C_pC_pR", "C_pC_pI", "C_pC_pC", "C_pC_vR", "C_rC_vI", "C_pC_vC",
+        "C_pC_pR", "C_pC_pI", "C_pC_pC", "C_pC_vR", "C_pC_vI", "C_pC_vC",
         "C_vR_pR", "C_vR_pI", "C_vR_pC", "C_vR_vR", "C_vR_vI", "C_vR_vC",
         "C_vI_pR", "C_vI_pI", "C_vI_pC", "C_vI_vR", "C_vI_vI", "C_vI_vC",
         "C_vC_pR", "C_vC_pI", "C_vC_pC", "C_vC_vR", "C_vC_vI", "C_vC_vC"
     ]
 
-    for i in range(len(commonIDs)):
-        satID = commonIDs[i]
+    for satID in commonIDs:
+        tleList = [tleDict[satID] for tleDict in tleDicts]
 
-        tle1 = tleDict1[satID]
-        tle2 = tleDict2[satID]
-        tle3 = tleDict3[satID]
-
-        cov = covarianceFrom3TLEs(tle1, tle2, tle3)
+        cov = covarianceFromTLEs(tleList, referenceIndex)
         if cov is None:
             continue
 
-        row = [tle2[0], satID]
+        referenceTLE = tleList[referenceIndex]
+
+        row = [referenceTLE[0], satID]
+
         for a in range(6):
             for b in range(6):
                 row.append(cov[a, b])
@@ -191,10 +184,10 @@ def tleCovariance(dataFile1, dataFile2, dataFile3):
         rows.append(row)
 
     t4 = time.monotonic()
-    print(f"Phase 4 complete {t4-t3:.2f} seconds later.")
+    print(f"Phase 4 complete {t4 - t3:.2f} seconds later.")
 
     # Store covariance data
     print("Phase 5:")
-    storeCSV("TLE_Covariance_RIC", rows, header)
+    storeCSV("TLE_Covariance_RIC5", rows, header)
     tf = time.monotonic()
-    print(f"Phase 5 complete {tf-t4:.2f} seconds later.")
+    print(f"Phase 5 complete {tf - t4:.2f} seconds later.")

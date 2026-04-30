@@ -99,12 +99,12 @@ Quaternion initalCameraRotation;
 
             Vector3 satPosition = sat.transform.position;
 
-            pointCamera = Quaternion.LookRotation(sat.velocity, Vector3.Normalize(satPosition));
-            initalCameraRotation = pointCamera;
 
             // Set inital camera point to velocity vector direction
             if (justCycled)
             {
+                pointCamera = Quaternion.LookRotation(sat.velocity, Vector3.Normalize(satPosition));
+                initalCameraRotation = pointCamera;
                 justCycled = false;
                 pitchAngle = 0;
                 headingAngle = 0;

@@ -4,6 +4,8 @@ import os
 from get_token import get_token
 import numpy as np
 
+# Enough of an attempty myself so that good ol chat can take over...
+
 fileName = "EarthEnvironmentData"
 
 batch_size = 100

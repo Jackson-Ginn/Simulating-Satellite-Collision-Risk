@@ -4,9 +4,9 @@ import os
 from get_token import get_token
 import numpy as np
 
-tle_file = "TLE Satellite Data 2026-04-02.txt"
+tle_file = "TLE Satellite Data 2026-04-26.txt"
 output_file = "satellite_masses.txt"
-batch_size = 1
+batch_size = 100
 
 def extractSatData(item):
     attributes = item.get("attributes", {})
@@ -23,15 +23,13 @@ def extractSatData(item):
 
 def getResponse(batch_size):
     response = requests.get(
-        f"{URL}/api/reentries",
+        f"{URL}/api/objects",
         headers=headers,
         params={
             "page[size]": batch_size,
             "page[number]": page
         },
     )
-    print(response.json())
-    input("")
     return response
 
 def extractRawData(response):

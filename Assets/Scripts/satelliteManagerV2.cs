@@ -72,6 +72,13 @@ public class satelliteManagerV2 : MonoBehaviour
                 sats.RemoveAt(i);
                 i--;
             }
+
+            if (sat.transform.position.x == 0)
+            {
+                Destroy(sat.gameObject);
+                sats.RemoveAt(i);
+                i--;
+            }
         }
     }
     public void AssignSatRadii(string data)
@@ -101,7 +108,7 @@ public class satelliteManagerV2 : MonoBehaviour
         avgMass = totalMass/count;
         for (int i = 0; i < sats.Count; i++)
         {
-            if (sats[i].mass == -1)
+            if (sats[i].mass == -1 || sats[i].mass == 0)
             {
                 sats[i].mass = avgMass;
             }
@@ -150,22 +157,17 @@ public class satelliteManagerV2 : MonoBehaviour
     }
     public void AssignSatCov(string[] names, string[][] CovData)
     {
-        // Get position of each satellite in the CSV covariance data file
         foreach (typeSatellite sat in sats)
         {
             int index = Array.IndexOf(names, sat.name);
 
-            if (index<0) continue; // Skip if sat not found
+            if (index < 0) continue;
 
-            // Therefore, assign covariance values to sat
-            for (int i = 0; i < 6; i++)
-            {
-                for (int j = 0; j < 6; j++)
-                {
-                    int flatIndex = 2 + (i * 6 + j);
-                    float.TryParse(CovData[index][flatIndex], out sat.CovMatrix[i, j]);                }
-            }
-            //Debug.Log(sat.name);
+            float.TryParse(CovData[index][2], out float covR);
+            float.TryParse(CovData[index][3], out float covS);
+            float.TryParse(CovData[index][4], out float covW);
+
+            sat.positionVariance = new Vector3(covR, covS, covW);
         }
     }
     private bool IsInCollisionRegion(typeSatellite sat)

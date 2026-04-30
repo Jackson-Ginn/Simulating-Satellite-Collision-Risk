@@ -11,7 +11,7 @@ public class typeSatellite : MonoBehaviour
     public string tleLine2;
     public float mass;
     public float radius;
-    public float[,] CovMatrix = new float[6,6];
+    public Vector3 positionVariance;
     public Satellite sgp4Satellite;
 
     [Header("Visual Shape")]
@@ -19,7 +19,7 @@ public class typeSatellite : MonoBehaviour
     public Vector3 defaultShape = Vector3.one;
     public Vector3 satShape = Vector3.one;
     public bool showCovarianceShape = false;
-    public float covarianceScaleFactor = 1f;
+    public float covarianceScaleFactor = simulationConstants.scaleFactor;
 
     void Start()
     {
@@ -51,12 +51,12 @@ public class typeSatellite : MonoBehaviour
 
     void ApplyCovarianceShape()
     {
-        if (CovMatrix == null || visualModel == null)
+        if (visualModel == null)
             return;
 
-        float radial = Mathf.Sqrt(Mathf.Abs(CovMatrix[0, 0]));
-        float inTrack = Mathf.Sqrt(Mathf.Abs(CovMatrix[1, 1]));
-        float crossTrack = Mathf.Sqrt(Mathf.Abs(CovMatrix[2, 2]));
+        float radial = Mathf.Abs(positionVariance.x);
+        float inTrack = Mathf.Abs(positionVariance.y);
+        float crossTrack = Mathf.Abs(positionVariance.z);
 
         satShape = new Vector3(radial, crossTrack, inTrack) * covarianceScaleFactor;
 
