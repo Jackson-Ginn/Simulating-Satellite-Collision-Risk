@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -22,6 +23,11 @@ public class collisionManager : MonoBehaviour
     [SerializeField] private float gridSizeKm = 50f;
     private float timer;
 
+    // Filtering out sats travelling together (Docked at space stations)
+    [SerializeField] private float minRelativeSpeedKmS = 0.00001f;
+
+    // Filtering out sat pairs beyond a certain time into future
+    [SerializeField] private float maxTcaSeconds = 30f;
 
     // Stores the pair of satellites as their position in the list of sats
     public struct SatPair
@@ -33,6 +39,21 @@ public class collisionManager : MonoBehaviour
         {
             A = a;
             B = b;
+        }
+    }
+
+    // For returning time until closest approach, relative distance and position at TCA
+    public struct TcaResult
+    {
+        public float tcaSeconds;
+        public float missDistanceKm;
+        public Vector3 relPosAtTcaKm;
+
+        public TcaResult(float tcaSeconds, float missDistanceKm, Vector3 relPosAtTcaKm)
+        {
+            this.tcaSeconds = tcaSeconds;
+            this.missDistanceKm = missDistanceKm;
+            this.relPosAtTcaKm = relPosAtTcaKm;
         }
     }
 
@@ -130,19 +151,6 @@ public class collisionManager : MonoBehaviour
 
         Debug.Log($"Candidate pairs found: {candidatePairs.Count}");
 
-        //if (candidatePairs.Count > 0)
-        //{
-        //    foreach (SatPair pair in candidatePairs)
-        //    {
-        //        Debug.Log(
-        //            $"{sats[pair.A].name} - {sats[pair.B].name}, " +
-        //            $"distance = {(sats[pair.A].posKm - sats[pair.B].posKm).magnitude} km, " +
-        //            $"posA = {sats[pair.A].posKm}, posB = {sats[pair.B].posKm}"
-        //        );
-        //    }
-        //}
-
-
         // EXPORT DATA
         ExportCandidatePairs(candidatePairs, sats);
         Debug.Log($"Candidate pairs found: {candidatePairs.Count}");
@@ -158,21 +166,42 @@ public class collisionManager : MonoBehaviour
             Mathf.FloorToInt(posKm.z/gridSizeKm)
         );
     }
+    // Check whether sats are moving towards each other
+    private bool IsValidCandidatePair(typeSatellite satA, typeSatellite satB)
+    {
+        Vector3 relPos = satA.posKm - satB.posKm;
+        Vector3 relVel = satA.velKmS - satB.velKmS;
 
-    private void CheckPairsInCell(List<int> indices, List<typeSatellite> sats, List<SatPair> candidatePairs)
+        float relativeSpeedKmS = relVel.magnitude;
+
+        if (relativeSpeedKmS < minRelativeSpeedKmS)
+            return false;
+
+        if (Vector3.Dot(relPos, relVel) > 0)
+            return false;
+
+        float distanceKm = relPos.magnitude;
+
+        if (distanceKm >= screeningDistanceKm)
+            return false;
+
+        return true;
+    }
+    private void CheckPairsInCell(
+        List<int> indices,
+        List<typeSatellite> sats,
+        List<SatPair> candidatePairs)
     {
         for (int i = 0; i < indices.Count; i++)
         {
-            for (int j = i+1; j < indices.Count; j++)
+            for (int j = i + 1; j < indices.Count; j++)
             {
                 int a = indices[i];
                 int b = indices[j];
 
-                float distanceKm = Vector3.Distance(sats[a].posKm, sats[b].posKm);
-
-                if (distanceKm < screeningDistanceKm)
+                if (IsValidCandidatePair(sats[a], sats[b]))
                 {
-                    candidatePairs.Add(new SatPair(a,b));
+                    candidatePairs.Add(new SatPair(a, b));
                 }
             }
         }
@@ -190,12 +219,7 @@ public class collisionManager : MonoBehaviour
                 int a = cellA[i];
                 int b = cellB[j];
 
-                float distanceKm = Vector3.Distance(
-                    sats[a].posKm,
-                    sats[b].posKm
-                );
-
-                if (distanceKm < screeningDistanceKm)
+                if (IsValidCandidatePair(sats[a], sats[b]))
                 {
                     candidatePairs.Add(new SatPair(a, b));
                 }
@@ -203,8 +227,7 @@ public class collisionManager : MonoBehaviour
         }
     }
 
-
-    // DATA EXPORTING
+    // Exporting candidate pair data
     private void ExportCandidatePairs(
     List<SatPair> candidatePairs,
     List<typeSatellite> sats)
@@ -224,7 +247,11 @@ public class collisionManager : MonoBehaviour
                 "distance_km," +
                 "satA_vx_km_s,satA_vy_km_s,satA_vz_km_s," +
                 "satB_vx_km_s,satB_vy_km_s,satB_vz_km_s," +
-                "relative_speed_km_s"
+                "relative_speed_km_s," +
+                "tca_seconds," +
+                "tca_time_utc," +
+                "miss_distance_km," +
+                "rel_x_at_tca_km,rel_y_at_tca_km,rel_z_at_tca_km"
             );
 
             hasWrittenHeader = true;
@@ -241,6 +268,14 @@ public class collisionManager : MonoBehaviour
             float distanceKm = relPos.magnitude;
             float relativeSpeedKmS = relVel.magnitude;
 
+            TcaResult? tca = CalculateLinearTCA(satA, satB);
+
+            if (!tca.HasValue)
+                continue; 
+
+            TcaResult tcaTrue = tca.Value;
+            DateTime tcaTime = satManager.CurrentTime.AddSeconds(tcaTrue.tcaSeconds);
+
             sb.AppendLine(
                 $"{satManager.CurrentTime.ToString("o")}," +
                 $"{satA.name},{satB.name}," +
@@ -249,10 +284,47 @@ public class collisionManager : MonoBehaviour
                 $"{distanceKm}," +
                 $"{satA.velKmS.x},{satA.velKmS.y},{satA.velKmS.z}," +
                 $"{satB.velKmS.x},{satB.velKmS.y},{satB.velKmS.z}," +
-                $"{relativeSpeedKmS}"
+                $"{relativeSpeedKmS}," +    
+                $"{tcaTrue.tcaSeconds}," +
+                $"{tcaTime.ToString("o")}," +
+                $"{tcaTrue.missDistanceKm}," +
+                $"{tcaTrue.relPosAtTcaKm.x},{tcaTrue.relPosAtTcaKm.y},{tcaTrue.relPosAtTcaKm.z}"
             );
         }
 
         File.AppendAllText(exportPath, sb.ToString());
+    }
+
+    // TCA Calculating
+    private TcaResult? CalculateLinearTCA(typeSatellite satA, typeSatellite satB)
+    {
+        Vector3 relPos = satA.posKm - satB.posKm;
+        Vector3 relVel = satA.velKmS - satB.velKmS;
+
+        float relVelSq = relVel.sqrMagnitude;
+
+        if (relVelSq < 1e-10f)
+        {
+            // Treat as stationary relative motion → only valid "now"
+            if (relPos.magnitude > screeningDistanceKm)
+                return null;
+
+            return new TcaResult(0f, relPos.magnitude, relPos);
+        }
+
+        float tcaSeconds = -Vector3.Dot(relPos, relVel) / relVelSq;
+
+        // Filter out non useful time of closest approach
+        if (tcaSeconds < 0f || tcaSeconds > maxTcaSeconds)
+            return null;
+
+        Vector3 relPosAtTca = relPos + relVel * tcaSeconds;
+        float missDistanceKm = relPosAtTca.magnitude;
+
+        return new TcaResult(
+            tcaSeconds,
+            missDistanceKm,
+            relPosAtTca
+        );
     }
 }

@@ -54,9 +54,9 @@ public class typeSatellite : MonoBehaviour
         if (visualModel == null)
             return;
 
-        float radial = Mathf.Abs(positionVariance.x);
-        float inTrack = Mathf.Abs(positionVariance.y);
-        float crossTrack = Mathf.Abs(positionVariance.z);
+        float radial = Mathf.Sqrt(Mathf.Abs(positionVariance.x));
+        float inTrack = Mathf.Sqrt(Mathf.Abs(positionVariance.y));
+        float crossTrack = Mathf.Sqrt(Mathf.Abs(positionVariance.z));
 
         satShape = new Vector3(radial, crossTrack, inTrack) * covarianceScaleFactor;
 
